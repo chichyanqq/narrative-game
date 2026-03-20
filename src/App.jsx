@@ -97,30 +97,20 @@ const parseReply = (text) => {
   const freeCheckRegex = /^\[需要检定:(.+?):(\d+)\]/;
   const freeMatch = text.trim().match(freeCheckRegex);
   if (freeMatch) {
-    return {
-      story: null,
-      opts: [],
-      status: [],
-      freeCheck: { skill: freeMatch[1], dc: parseInt(freeMatch[2]) },
-    };
+    return { story: null, opts: [], status: [], freeCheck: { skill: freeMatch[1], dc: parseInt(freeMatch[2]) } };
   }
-
   const parts = text.split("---");
   const body = parts[0].trim();
   const statusRaw = (parts[1] || "").trim();
   const lines = body.split("\n");
   const story = [], opts = [];
-
   const checkRegex = /【检定:(.+?):(\d+)】/;
   for (const l of lines) {
     if (l.trim().startsWith("▶")) {
       const raw = l.trim().replace(/^▶\s*/, "");
       const match = raw.match(checkRegex);
       if (match) {
-        opts.push({
-          text: raw.replace(checkRegex, "").trim(),
-          check: { skill: match[1], dc: parseInt(match[2]) },
-        });
+        opts.push({ text: raw.replace(checkRegex, "").trim(), check: { skill: match[1], dc: parseInt(match[2]) } });
       } else {
         opts.push({ text: raw, check: null });
       }
@@ -128,13 +118,7 @@ const parseReply = (text) => {
       story.push(l);
     }
   }
-
-  return {
-    story: story.join("\n").trim(),
-    opts,
-    status: statusRaw.split("\n").filter(Boolean),
-    freeCheck: null,
-  };
+  return { story: story.join("\n").trim(), opts, status: statusRaw.split("\n").filter(Boolean), freeCheck: null };
 };
 
 const callModel = async ({ provider, apiKey, messages, systemPrompt }) => {
@@ -142,12 +126,7 @@ const callModel = async ({ provider, apiKey, messages, systemPrompt }) => {
   if (cfg.format === "anthropic") {
     const res = await fetch(cfg.url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
       body: JSON.stringify({ model: cfg.defaultModel, max_tokens: 3000, system: systemPrompt, messages }),
     });
     const data = await res.json();
@@ -158,10 +137,7 @@ const callModel = async ({ provider, apiKey, messages, systemPrompt }) => {
     const res = await fetch(cfg.url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: cfg.defaultModel, max_tokens: 3000,
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-      }),
+      body: JSON.stringify({ model: cfg.defaultModel, max_tokens: 3000, messages: [{ role: "system", content: systemPrompt }, ...messages] }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
@@ -173,10 +149,8 @@ const DiceModal = ({ check, attrs, optionText, onResult, onCancel }) => {
   const [rolling, setRolling] = useState(false);
   const [rolled, setRolled] = useState(null);
   const [display, setDisplay] = useState(null);
-
   const skillAttr = attrs.find(a => a.name === check.skill);
   const skillVal = skillAttr?.value || 0;
-
   const roll = () => {
     setRolling(true);
     let count = 0;
@@ -186,49 +160,37 @@ const DiceModal = ({ check, attrs, optionText, onResult, onCancel }) => {
       if (count > 15) {
         clearInterval(interval);
         const final = Math.floor(Math.random() * 20) + 1;
-        setRolled(final);
-        setDisplay(final);
-        setRolling(false);
+        setRolled(final); setDisplay(final); setRolling(false);
       }
     }, 60);
   };
-
   const total = rolled !== null ? rolled + skillVal : null;
   const success = total !== null ? total >= check.dc : null;
-
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(90,62,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-      <div style={{ background: "#fffaf4", border: "1px solid rgba(180,140,100,0.3)", borderRadius: 12, padding: "32px 40px", textAlign: "center", fontFamily: "'Noto Serif SC', Georgia, serif", minWidth: 320 }}>
-        <div style={{ fontSize: 13, color: "#b89880", marginBottom: 6, letterSpacing: "0.1em" }}>技能检定</div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(90,62,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+      <div style={{ background: "#fffaf4", border: "1px solid rgba(180,140,100,0.3)", borderRadius: 12, padding: "32px 40px", textAlign: "center", fontFamily: "'Noto Serif SC', Georgia, serif", minWidth: 300, maxWidth: "90vw" }}>
+        <div style={{ fontSize: 13, color: "#b89880", marginBottom: 6 }}>技能检定</div>
         <div style={{ fontSize: 15, color: "#5a3e2b", marginBottom: 4, fontWeight: 500 }}>{optionText}</div>
-        <div style={{ fontSize: 12, color: "#b89880", marginBottom: 24 }}>
-          {check.skill} {skillVal} · 目标 DC {check.dc}
-        </div>
+        <div style={{ fontSize: 12, color: "#b89880", marginBottom: 24 }}>{check.skill} {skillVal} · DC {check.dc}</div>
         <div style={{ width: 80, height: 80, margin: "0 auto 24px", border: "2px solid #c47c5a", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, color: "#c47c5a", fontWeight: 500, background: rolling ? "rgba(196,124,90,0.08)" : "transparent" }}>
           {display || "?"}
         </div>
         {total !== null && (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#b89880", marginBottom: 4 }}>
-              {rolled} + {skillVal} = <span style={{ fontSize: 16, color: "#5a3e2b", fontWeight: 500 }}>{total}</span>
-            </div>
-            <div style={{ fontSize: 15, fontWeight: 500, color: success ? "#6a9e6a" : "#c47c5a", marginTop: 4 }}>
-              {success ? "✦ 检定成功" : "✧ 检定失败"}
-            </div>
+            <div style={{ fontSize: 13, color: "#b89880", marginBottom: 4 }}>{rolled} + {skillVal} = <span style={{ fontSize: 16, color: "#5a3e2b", fontWeight: 500 }}>{total}</span></div>
+            <div style={{ fontSize: 15, fontWeight: 500, color: success ? "#6a9e6a" : "#c47c5a", marginTop: 4 }}>{success ? "✦ 检定成功" : "✧ 检定失败"}</div>
           </div>
         )}
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           {rolled === null ? (
             <>
               <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(180,140,100,0.3)", borderRadius: 6, color: "#b89880", fontFamily: "inherit", fontSize: 13, padding: "10px 20px", cursor: "pointer" }}>取消</button>
-              <button onClick={roll} disabled={rolling} style={{ background: "#c47c5a", border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 13, padding: "10px 28px", cursor: rolling ? "not-allowed" : "pointer", letterSpacing: "0.1em", opacity: rolling ? 0.7 : 1 }}>
+              <button onClick={roll} disabled={rolling} style={{ background: "#c47c5a", border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 13, padding: "10px 28px", cursor: rolling ? "not-allowed" : "pointer", opacity: rolling ? 0.7 : 1 }}>
                 {rolling ? "投掷中……" : "投掷骰子"}
               </button>
             </>
           ) : (
-            <button onClick={() => onResult(success)} style={{ background: "#c47c5a", border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 13, padding: "10px 28px", cursor: "pointer", letterSpacing: "0.1em" }}>
-              继续
-            </button>
+            <button onClick={() => onResult(success)} style={{ background: "#c47c5a", border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 13, padding: "10px 28px", cursor: "pointer" }}>继续</button>
           )}
         </div>
       </div>
@@ -238,6 +200,7 @@ const DiceModal = ({ check, attrs, optionText, onResult, onCancel }) => {
 
 export default function App() {
   const [tab, setTab] = useState("settings");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [provider, setProvider] = useState("deepseek");
   const [apiKey, setApiKey] = useState("");
   const [world, setWorld] = useState("");
@@ -308,14 +271,9 @@ export default function App() {
     setLoading(true);
     setOptions([]);
     setError("");
-
     try {
-      const raw = await callModel({
-        provider, apiKey, messages: newMsgs,
-        systemPrompt: buildSystem({ world, protagonist, chars }, attrs),
-      });
+      const raw = await callModel({ provider, apiKey, messages: newMsgs, systemPrompt: buildSystem({ world, protagonist, chars }, attrs) });
       const parsed = parseReply(raw);
-
       if (parsed.freeCheck) {
         setPendingCheck(parsed.freeCheck);
         setPendingOptionText(userMsg);
@@ -323,11 +281,9 @@ export default function App() {
         setLoading(false);
         return;
       }
-
       const finalMsgs = [...newMsgs, { role: "assistant", content: raw }];
       setMessages(finalMsgs);
       setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
-
       const fallbackOpts = parsed.opts.length > 0 ? parsed.opts : [
         { text: "继续观察，静待变化", check: null },
         { text: "主动出击，推进局面", check: null },
@@ -362,7 +318,7 @@ export default function App() {
   const handleStart = () => {
     if (!apiKey) return alert("请先填入API key");
     setStarted(true);
-    setTab("game");
+    setSidebarOpen(false);
     call("游戏开始，请描述开场场景。", []);
   };
 
@@ -387,6 +343,130 @@ export default function App() {
     resize: "vertical", outline: "none", boxSizing: "border-box", marginBottom: 12,
   };
 
+  const SidebarContent = () => (
+    <>
+      <div style={{ padding: "18px 16px 0", borderBottom: `1px solid ${c.border}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 17, color: c.accent, letterSpacing: "0.2em", marginBottom: 2 }}>叙事引擎</div>
+            <div style={{ fontSize: 12, color: c.muted, marginBottom: 12, letterSpacing: "0.15em" }}>NARRATIVE ENGINE</div>
+          </div>
+          <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: c.muted, fontSize: 18, cursor: "pointer", padding: "0 0 12px" }}>✕</button>
+        </div>
+        <div style={{ display: "flex" }}>
+          {[["settings", "设定"], ["attrs", "属性"], ["context", "自查"]].map(([id, label]) => (
+            <button key={id} onClick={() => setTab(id)} style={{ background: "none", border: "none", borderBottom: tab === id ? `2px solid ${c.accent}` : "2px solid transparent", color: tab === id ? c.accent : c.muted, fontFamily: "inherit", fontSize: 12, padding: "8px 10px", cursor: "pointer", letterSpacing: "0.08em" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {started && statusLines.length > 0 && (
+        <div style={{ margin: "12px 14px 0", padding: 10, background: "rgba(196,124,90,0.06)", border: `1px solid rgba(196,124,90,0.2)`, borderRadius: 6, fontSize: 11, lineHeight: 2, color: c.text }}>
+          {statusLines.map((l, i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
+
+      <div style={{ flex: 1, overflowY: "auto", padding: 14 }}>
+        {tab === "settings" && (
+          <>
+            <div style={{ fontSize: 10, letterSpacing: "0.12em", color: c.muted, marginBottom: 5, textTransform: "uppercase" }}>模型</div>
+            <select value={provider} onChange={e => setProvider(e.target.value)} style={{ ...ta, resize: "none" }}>
+              {Object.entries(MODELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+            {[
+              { label: "API KEY", val: apiKey, set: setApiKey, ph: "粘贴你的API key", rows: 2 },
+              { label: "世界观", val: world, set: setWorld, ph: "故事背景、世界规则……", rows: 4 },
+              { label: "主角设定", val: protagonist, set: setProtagonist, ph: "你的姓名、性格、背景……", rows: 3 },
+              { label: "重要角色", val: chars, set: setChars, ph: "其他NPC简要设定……", rows: 3 },
+            ].map(({ label, val, set, ph, rows }) => (
+              <div key={label}>
+                <div style={{ fontSize: 10, letterSpacing: "0.12em", color: c.muted, marginBottom: 5, textTransform: "uppercase" }}>{label}</div>
+                <textarea value={val} onChange={e => set(e.target.value)} placeholder={ph} rows={rows} style={ta} />
+              </div>
+            ))}
+            <div style={{ fontSize: 10, letterSpacing: "0.12em", color: c.muted, marginBottom: 5, textTransform: "uppercase" }}>角色属性</div>
+            <div style={{ fontSize: 10, color: c.muted, marginBottom: 6, lineHeight: 1.7 }}>格式：技能名:数值，一行一个。NPC好感度用 好感_名字:数值</div>
+            <textarea value={attrsRaw} onChange={e => setAttrsRaw(e.target.value)} placeholder={"欺骗:12\n说服:8\n心境:15\n好感_师兄:30"} rows={6} style={ta} />
+            <button onClick={() => {
+              const lines = attrsRaw.split("\n").map(l => l.trim()).filter(Boolean);
+              if (lines.length === 0) return alert("请先填入属性名");
+              const rolled = lines.map(l => {
+                const name = l.split(":")[0].trim();
+                const val = Array.from({length: 3}, () => Math.floor(Math.random() * 6) + 1).reduce((a, b) => a + b, 0);
+                return `${name}:${val}`;
+              });
+              setAttrsRaw(rolled.join("\n"));
+            }} style={{ width: "100%", padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 8 }}>
+              🎲 随机生成 / 重新roll
+            </button>
+            <button onClick={handleStart} style={{ width: "100%", padding: 10, background: c.accent, border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 12, letterSpacing: "0.12em", cursor: "pointer" }}>
+              开始游戏
+            </button>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button onClick={handleExport} disabled={!started} style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: started ? c.text : c.muted, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: started ? "pointer" : "not-allowed" }}>导出存档</button>
+              <label style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", textAlign: "center" }}>
+                读取存档
+                <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
+              </label>
+            </div>
+          </>
+        )}
+
+        {tab === "attrs" && (
+          <div>
+            {charAttrs.length > 0 && (
+              <>
+                <div style={{ fontSize: 10, color: c.accent, marginBottom: 10, letterSpacing: "0.1em" }}>角色属性</div>
+                {charAttrs.map((a, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: `1px solid ${c.border}`, fontSize: 13 }}>
+                    <span style={{ color: c.text }}>{a.name}</span>
+                    <span style={{ color: c.accent, fontWeight: 500 }}>{a.value}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {npcAttrs.length > 0 && (
+              <>
+                <div style={{ fontSize: 10, color: c.accent, margin: "16px 0 10px", letterSpacing: "0.1em" }}>NPC 好感度</div>
+                {npcAttrs.map((a, i) => (
+                  <div key={i} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: c.text }}>
+                      <span>{a.name.replace("好感_", "")}</span>
+                      <span style={{ color: c.accent }}>{a.value}</span>
+                    </div>
+                    <div style={{ height: 4, background: "rgba(196,124,90,0.15)", borderRadius: 2 }}>
+                      <div style={{ height: "100%", width: `${Math.min(a.value, 100)}%`, background: c.accent, borderRadius: 2, transition: "width 0.3s" }} />
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+            {charAttrs.length === 0 && npcAttrs.length === 0 && (
+              <div style={{ fontSize: 11, color: c.muted }}>在设定页填写角色属性后显示</div>
+            )}
+          </div>
+        )}
+
+        {tab === "context" && (
+          <div>
+            <div style={{ fontSize: 10, color: c.accent, marginBottom: 10, letterSpacing: "0.1em" }}>上下文自查日志</div>
+            {contextLog.length === 0
+              ? <div style={{ fontSize: 11, color: c.muted }}>游戏开始后记录</div>
+              : contextLog.map((snap, i) => (
+                <div key={i} style={{ marginBottom: 10, padding: 10, background: "rgba(255,255,255,0.5)", border: `1px solid ${c.border}`, borderRadius: 6, fontSize: 11, lineHeight: 1.8 }}>
+                  <div style={{ color: c.accent, marginBottom: 3 }}>第 {snap.turn} 轮</div>
+                  <div style={{ color: c.muted, marginBottom: 4 }}>▷ {snap.input}</div>
+                  {snap.status.map((s, j) => <div key={j} style={{ color: c.text }}>{s}</div>)}
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <>
       <style>{`
@@ -397,140 +477,50 @@ export default function App() {
         }
       `}</style>
       {pendingCheck && (
-        <DiceModal
-          check={pendingCheck}
-          attrs={attrs}
-          optionText={pendingOptionText}
-          onResult={handleCheckResult}
-          onCancel={() => setPendingCheck(null)}
-        />
+        <DiceModal check={pendingCheck} attrs={attrs} optionText={pendingOptionText} onResult={handleCheckResult} onCancel={() => setPendingCheck(null)} />
       )}
-      <div style={{ display: "flex", height: "100vh", background: c.bg, color: c.text, fontFamily: "'Noto Serif SC', 'Songti SC', STSong, Georgia, serif" }}>
-        <div style={{ width: 260, background: c.side, borderRight: `1px solid ${c.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
-          <div style={{ padding: "18px 16px 0", borderBottom: `1px solid ${c.border}` }}>
-            <div style={{ fontSize: 17, color: c.accent, letterSpacing: "0.2em", marginBottom: 2 }}>叙事引擎</div>
-            <div style={{ fontSize: 12, color: c.muted, marginBottom: 12, letterSpacing: "0.15em" }}>NARRATIVE ENGINE</div>
-            <div style={{ display: "flex" }}>
-              {[["settings", "设定"], ["attrs", "属性"], ["context", "自查"]].map(([id, label]) => (
-                <button key={id} onClick={() => setTab(id)} style={{ background: "none", border: "none", borderBottom: tab === id ? `2px solid ${c.accent}` : "2px solid transparent", color: tab === id ? c.accent : c.muted, fontFamily: "inherit", fontSize: 12, padding: "8px 10px", cursor: "pointer", letterSpacing: "0.08em" }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {started && statusLines.length > 0 && (
-            <div style={{ margin: "12px 14px 0", padding: 10, background: "rgba(196,124,90,0.06)", border: `1px solid rgba(196,124,90,0.2)`, borderRadius: 6, fontSize: 11, lineHeight: 2, color: c.text }}>
-              {statusLines.map((l, i) => <div key={i}>{l}</div>)}
-            </div>
-          )}
+      {/* 手机端遮罩 */}
+      {sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(90,62,43,0.3)", zIndex: 99 }} />
+      )}
 
-          <div style={{ flex: 1, overflowY: "auto", padding: 14 }}>
-            {tab === "settings" && (
-              <>
-                <div style={{ fontSize: 10, letterSpacing: "0.12em", color: c.muted, marginBottom: 5, textTransform: "uppercase" }}>模型</div>
-                <select value={provider} onChange={e => setProvider(e.target.value)} style={{ ...ta, resize: "none" }}>
-                  {Object.entries(MODELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
-                {[
-                  { label: "API KEY", val: apiKey, set: setApiKey, ph: "粘贴你的API key", rows: 2 },
-                  { label: "世界观", val: world, set: setWorld, ph: "故事背景、世界规则……", rows: 4 },
-                  { label: "主角设定", val: protagonist, set: setProtagonist, ph: "你的姓名、性格、背景……", rows: 3 },
-                  { label: "重要角色", val: chars, set: setChars, ph: "其他NPC简要设定……", rows: 3 },
-                ].map(({ label, val, set, ph, rows }) => (
-                  <div key={label}>
-                    <div style={{ fontSize: 10, letterSpacing: "0.12em", color: c.muted, marginBottom: 5, textTransform: "uppercase" }}>{label}</div>
-                    <textarea value={val} onChange={e => set(e.target.value)} placeholder={ph} rows={rows} style={ta} />
-                  </div>
-                ))}
-                <div style={{ fontSize: 10, letterSpacing: "0.12em", color: c.muted, marginBottom: 5, textTransform: "uppercase" }}>角色属性</div>
-                <div style={{ fontSize: 10, color: c.muted, marginBottom: 6, lineHeight: 1.7 }}>格式：技能名:数值，一行一个。NPC好感度用 好感_名字:数值</div>
-                <textarea value={attrsRaw} onChange={e => setAttrsRaw(e.target.value)} placeholder={"欺骗:12\n说服:8\n心境:15\n好感_师兄:30"} rows={6} style={ta} />
-                <button onClick={() => {
-                  const lines = attrsRaw.split("\n").map(l => l.trim()).filter(Boolean);
-                  if (lines.length === 0) return alert("请先填入属性名");
-                  const rolled = lines.map(l => {
-                    const name = l.split(":")[0].trim();
-                    const val = Array.from({length: 3}, () => Math.floor(Math.random() * 6) + 1).reduce((a, b) => a + b, 0);
-                    return `${name}:${val}`;
-                  });
-                  setAttrsRaw(rolled.join("\n"));
-                }} style={{ width: "100%", padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 8 }}>
-                  🎲 随机生成 / 重新roll
-                </button>
-                <button onClick={handleStart} style={{ width: "100%", padding: 10, background: c.accent, border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 12, letterSpacing: "0.12em", cursor: "pointer" }}>
-                  开始游戏
-                </button>
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button onClick={handleExport} disabled={!started} style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: started ? c.text : c.muted, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: started ? "pointer" : "not-allowed" }}>导出存档</button>
-                  <label style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", textAlign: "center" }}>
-                    读取存档
-                    <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
-                  </label>
-                </div>
-              </>
-            )}
+      <div style={{ display: "flex", height: "100vh", background: c.bg, color: c.text, fontFamily: "'Noto Serif SC', 'Songti SC', STSong, Georgia, serif", position: "relative" }}>
 
-            {tab === "attrs" && (
-              <div>
-                {charAttrs.length > 0 && (
-                  <>
-                    <div style={{ fontSize: 10, color: c.accent, marginBottom: 10, letterSpacing: "0.1em" }}>角色属性</div>
-                    {charAttrs.map((a, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: `1px solid ${c.border}`, fontSize: 13 }}>
-                        <span style={{ color: c.text }}>{a.name}</span>
-                        <span style={{ color: c.accent, fontWeight: 500 }}>{a.value}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-                {npcAttrs.length > 0 && (
-                  <>
-                    <div style={{ fontSize: 10, color: c.accent, margin: "16px 0 10px", letterSpacing: "0.1em" }}>NPC 好感度</div>
-                    {npcAttrs.map((a, i) => (
-                      <div key={i} style={{ marginBottom: 8 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: c.text }}>
-                          <span>{a.name.replace("好感_", "")}</span>
-                          <span style={{ color: c.accent }}>{a.value}</span>
-                        </div>
-                        <div style={{ height: 4, background: "rgba(196,124,90,0.15)", borderRadius: 2 }}>
-                          <div style={{ height: "100%", width: `${Math.min(a.value, 100)}%`, background: c.accent, borderRadius: 2, transition: "width 0.3s" }} />
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-                {charAttrs.length === 0 && npcAttrs.length === 0 && (
-                  <div style={{ fontSize: 11, color: c.muted }}>在设定页填写角色属性后显示</div>
-                )}
-              </div>
-            )}
-
-            {tab === "context" && (
-              <div>
-                <div style={{ fontSize: 10, color: c.accent, marginBottom: 10, letterSpacing: "0.1em" }}>上下文自查日志</div>
-                {contextLog.length === 0
-                  ? <div style={{ fontSize: 11, color: c.muted }}>游戏开始后记录</div>
-                  : contextLog.map((snap, i) => (
-                    <div key={i} style={{ marginBottom: 10, padding: 10, background: "rgba(255,255,255,0.5)", border: `1px solid ${c.border}`, borderRadius: 6, fontSize: 11, lineHeight: 1.8 }}>
-                      <div style={{ color: c.accent, marginBottom: 3 }}>第 {snap.turn} 轮</div>
-                      <div style={{ color: c.muted, marginBottom: 4 }}>▷ {snap.input}</div>
-                      {snap.status.map((s, j) => <div key={j} style={{ color: c.text }}>{s}</div>)}
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
+        {/* 侧栏 */}
+        <div style={{
+          position: "fixed", top: 0, left: 0, height: "100vh", width: 280,
+          background: c.side, borderRight: `1px solid ${c.border}`,
+          display: "flex", flexDirection: "column", zIndex: 100,
+          transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.25s ease",
+        }}>
+          <SidebarContent />
         </div>
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", background: c.panel }}>
+        {/* 主区域 */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", background: c.panel, minWidth: 0 }}>
+          {/* 顶部栏 */}
+          <div style={{ height: 44, background: c.side, borderBottom: `1px solid ${c.border}`, display: "flex", alignItems: "center", padding: "0 16px", gap: 12, flexShrink: 0 }}>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: "none", border: "none", color: c.accent, fontSize: 18, cursor: "pointer", padding: "4px 6px", lineHeight: 1 }}>
+              ☰
+            </button>
+            <span style={{ fontSize: 14, color: c.accent, letterSpacing: "0.15em" }}>叙事引擎</span>
+            {started && statusLines.length > 0 && (
+              <span style={{ fontSize: 11, color: c.muted, marginLeft: "auto", letterSpacing: "0.05em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {statusLines[0]}
+              </span>
+            )}
+          </div>
+
           <div style={{ height: 2, background: `linear-gradient(90deg, transparent, ${c.accent}, transparent)`, opacity: 0.3 }} />
-          <div ref={storyRef} style={{ flex: 1, overflowY: "auto", padding: "36px 44px 20px" }}>
+
+          <div ref={storyRef} style={{ flex: 1, overflowY: "auto", padding: "24px 20px 16px" }}>
             {!started ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center", color: c.muted }}>
                 <div>
                   <div style={{ fontSize: 28, color: "rgba(196,124,90,0.25)", marginBottom: 12 }}>◈</div>
-                  <div style={{ fontSize: 12, letterSpacing: "0.2em" }}>在左侧填写设定后开始游戏</div>
+                  <div style={{ fontSize: 12, letterSpacing: "0.2em" }}>点左上角菜单填写设定后开始游戏</div>
                 </div>
               </div>
             ) : (
@@ -552,7 +542,7 @@ export default function App() {
                             setMessages(prevMsgs);
                             setOptions([]);
                             call(h.input, prevMsgs);
-                          }} style={{ background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, color: c.muted, fontFamily: "inherit", fontSize: 10, padding: "3px 8px", cursor: "pointer", letterSpacing: "0.08em", flexShrink: 0, marginLeft: 8 }}>
+                          }} style={{ background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, color: c.muted, fontFamily: "inherit", fontSize: 10, padding: "3px 8px", cursor: "pointer", flexShrink: 0, marginLeft: 8 }}>
                             ↺ 重新生成
                           </button>
                         )}
@@ -586,11 +576,7 @@ export default function App() {
                         display: "flex", justifyContent: "space-between", alignItems: "center",
                       }}>
                         <span>▶ {opt.text}</span>
-                        {opt.check && (
-                          <span style={{ fontSize: 11, color: c.accent, marginLeft: 10, flexShrink: 0 }}>
-                            {opt.check.skill} DC{opt.check.dc}
-                          </span>
-                        )}
+                        {opt.check && <span style={{ fontSize: 11, color: c.accent, marginLeft: 10, flexShrink: 0 }}>{opt.check.skill} DC{opt.check.dc}</span>}
                       </button>
                     ))}
                   </div>
@@ -598,12 +584,13 @@ export default function App() {
               </div>
             )}
           </div>
+
           {started && (
             <>
-              <div style={{ margin: "0 44px", height: 1, background: `linear-gradient(90deg, transparent, ${c.border}, transparent)` }} />
-              <div style={{ padding: "12px 44px 20px", display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder="自由输入行动……（Enter发送，Shift+Enter换行）" rows={2} disabled={loading} style={{ ...ta, flex: 1, marginBottom: 0, fontSize: 13 }} />
-                <button onClick={() => handleSend()} disabled={loading || !input.trim()} style={{ height: 40, padding: "0 18px", background: c.accent, border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 12, cursor: "pointer", flexShrink: 0, opacity: loading || !input.trim() ? 0.4 : 1 }}>
+              <div style={{ margin: "0 20px", height: 1, background: `linear-gradient(90deg, transparent, ${c.border}, transparent)` }} />
+              <div style={{ padding: "10px 20px 16px", display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder="自由输入行动……" rows={2} disabled={loading} style={{ ...ta, flex: 1, marginBottom: 0, fontSize: 13 }} />
+                <button onClick={() => handleSend()} disabled={loading || !input.trim()} style={{ height: 40, padding: "0 16px", background: c.accent, border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 12, cursor: "pointer", flexShrink: 0, opacity: loading || !input.trim() ? 0.4 : 1 }}>
                   {loading ? "……" : "发送"}
                 </button>
               </div>
