@@ -379,7 +379,6 @@ export default function App() {
   };
 
   const ta = {
-    const ta = {
     width: "100%", background: "rgba(255,255,255,0.6)",
     border: `1px solid ${c.border}`, borderRadius: 6,
     color: c.text, fontFamily: "'Noto Serif SC', 'Songti SC', STSong, Georgia, serif",
