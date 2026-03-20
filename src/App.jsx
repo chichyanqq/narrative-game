@@ -193,7 +193,7 @@ export default function App() {
   };
 
   const ta = {
-    width: "100%", background: "rgba(255,255,255,0.04)",
+    width: "100%", background: "rgba(255,255,255,0.6)",
     border: `1px solid ${c.border}`, borderRadius: 6,
     color: c.text, fontFamily: "'Noto Serif SC', Georgia, serif",
     fontSize: 12, lineHeight: 1.8, padding: "8px 10px",
@@ -201,7 +201,9 @@ export default function App() {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: c.bg, color: c.text, fontFamily: "'Noto Serif SC', Georgia, serif" }}>
+     <>
+<style>{`@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');`}</style>
+    <div style={{ display: "flex", height: "100vh", background: c.bg, color: c.text,fontFamily: "'Ma Shan Zheng', 'Noto Serif SC', Georgia, serif" }}>
       <div style={{ width: 260, background: c.side, borderRight: `1px solid ${c.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
         <div style={{ padding: "18px 16px 0", borderBottom: `1px solid ${c.border}` }}>
           <div style={{ fontSize: 15, color: c.accent, letterSpacing: "0.2em", marginBottom: 2 }}>叙事引擎</div>
