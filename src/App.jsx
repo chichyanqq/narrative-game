@@ -186,10 +186,10 @@ export default function App() {
     call(val, messages);
   };
 
-  const c = {
-    bg: "#12100e", side: "#1a1714", panel: "#1e1b18",
-    border: "rgba(180,160,130,0.15)", accent: "#c9a96e",
-    text: "#d4c9b8", muted: "#7a6e62", story: "#e8dfd0",
+ const c = {
+    bg: "#fdf6ee", side: "#faeede", panel: "#fffaf4",
+    border: "rgba(180,140,100,0.2)", accent: "#c47c5a",
+    text: "#5a3e2b", muted: "#b89880", story: "#3d2b1f",
   };
 
   const ta = {
