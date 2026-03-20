@@ -434,9 +434,21 @@ export default function App() {
                   </div>
                 ))}
                 <div style={{ fontSize: 10, letterSpacing: "0.12em", color: c.muted, marginBottom: 5, textTransform: "uppercase" }}>角色属性</div>
-                <div style={{ fontSize: 10, color: c.muted, marginBottom: 6, lineHeight: 1.7 }}>格式：技能名:数值，一行一个。NPC好感度用 好感_名字:数值</div>
-                <textarea value={attrsRaw} onChange={e => setAttrsRaw(e.target.value)} placeholder={"欺骗:12\n说服:8\n心境:15\n好感_师兄:30"} rows={6} style={ta} />
-                <button onClick={handleStart} style={{ width: "100%", padding: 10, background: c.accent, border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 12, letterSpacing: "0.12em", cursor: "pointer" }}>
+              <div style={{ fontSize: 10, color: c.muted, marginBottom: 6, lineHeight: 1.7 }}>格式：技能名:数值，一行一个。NPC好感度用 好感_名字:数值</div>
+<textarea value={attrsRaw} onChange={e => setAttrsRaw(e.target.value)} placeholder={"欺骗:12\n说服:8\n心境:15\n好感_师兄:30"} rows={6} style={ta} />
+<button onClick={() => {
+  const lines = attrsRaw.split("\n").map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return alert("请先填入属性名");
+  const rolled = lines.map(l => {
+    const name = l.split(":")[0].trim();
+    const val = Array.from({length: 3}, () => Math.floor(Math.random() * 6) + 1).reduce((a, b) => a + b, 0);
+    return `${name}:${val}`;
+  });
+  setAttrsRaw(rolled.join("\n"));
+}} style={{ width: "100%", padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 8 }}>
+  🎲 随机生成 / 重新roll
+</button>
+<button onClick={handleStart} ...>
                   开始游戏
                 </button>
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
