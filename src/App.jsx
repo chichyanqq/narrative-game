@@ -48,18 +48,24 @@ ${attrs.length > 0 ? attrs.map(a => `${a.name}：${a.value}`).join("、") : "（
 - 每轮结尾必须开启新事件或新进展，禁止用环境描写收尾
 - 所有关系循序渐进，禁止角色对主角莫名好感
 - NPC有自己的动机，世界自己在运转
-- 提供2-4个选项，格式：每行一个，前面加 ▶ 符号
 - 每轮结尾必须已经发生了新的事件或人物动作，选项是基于新状态的选择，而不是推动剧情的唯一方式——世界不等玩家发话才运转
+- 每轮必须提供2-4个选项，无论任何情况都不能省略选项
 
-## 检定规则
-当玩家的行动需要检定时，在叙事中插入以下格式触发骰子：
-[检定:技能名:DC数字]
-例如：[检定:欺骗:15] 或 [检定:心境:12]
+## 选项格式规则
+选项格式：每行一个，前面加 ▶ 符号。
+如果某个选项需要技能检定，在选项末尾加【检定:技能名:DC数字】，例如：
+▶ 纵身追去【检定:体能:12】
+▶ 出言拦住他【检定:说服:15】
+▶ 回想刚才发生的事
+不需要检定的选项直接写，不加任何标记。
 技能名必须和角色属性里的名字完全一致。
-检定结果由系统自动计算（角色技能值 + D20），你需要在检定标记后继续写两种可能的结果：
-成功：……
-失败：……
-系统会根据roll结果选择对应叙事继续推进。
+
+## 自由输入的检定处理
+当玩家自由输入一个行动（非选项），你需要判断该行动是否需要技能检定：
+- 如果需要检定：回复第一行只写 [需要检定:技能名:DC数字]，不写任何其他内容，等待检定结果
+- 如果不需要检定：直接正常叙事
+例如玩家输入"我想翻墙进去"，你判断需要体能检定DC14，则只回复：
+[需要检定:体能:14]
 
 ## NPC好感度
 当好感度发生变化时，在回复末尾的状态块里更新对应NPC的好感值。
@@ -86,25 +92,36 @@ const parseAttrs = (raw) => {
 };
 
 const parseReply = (text) => {
+  const freeCheckRegex = /^\[需要检定:(.+?):(\d+)\]/;
+  const freeMatch = text.trim().match(freeCheckRegex);
+  if (freeMatch) {
+    return {
+      story: null,
+      opts: [],
+      status: [],
+      freeCheck: { skill: freeMatch[1], dc: parseInt(freeMatch[2]) },
+    };
+  }
+
   const parts = text.split("---");
   const body = parts[0].trim();
   const statusRaw = (parts[1] || "").trim();
   const lines = body.split("\n");
   const story = [], opts = [];
-  let checkMatch = null;
-  let successText = "";
-  let failText = "";
 
-  const checkRegex = /\[检定:(.+?):(\d+)\]/;
+  const checkRegex = /【检定:(.+?):(\d+)】/;
   for (const l of lines) {
     if (l.trim().startsWith("▶")) {
-      opts.push(l.trim().replace(/^▶\s*/, ""));
-    } else if (checkRegex.test(l) && !checkMatch) {
-      checkMatch = l.match(checkRegex);
-    } else if (checkMatch && l.startsWith("成功：")) {
-      successText = l.replace("成功：", "").trim();
-    } else if (checkMatch && l.startsWith("失败：")) {
-      failText = l.replace("失败：", "").trim();
+      const raw = l.trim().replace(/^▶\s*/, "");
+      const match = raw.match(checkRegex);
+      if (match) {
+        opts.push({
+          text: raw.replace(checkRegex, "").trim(),
+          check: { skill: match[1], dc: parseInt(match[2]) },
+        });
+      } else {
+        opts.push({ text: raw, check: null });
+      }
     } else {
       story.push(l);
     }
@@ -114,7 +131,7 @@ const parseReply = (text) => {
     story: story.join("\n").trim(),
     opts,
     status: statusRaw.split("\n").filter(Boolean),
-    check: checkMatch ? { skill: checkMatch[1], dc: parseInt(checkMatch[2]), successText, failText } : null,
+    freeCheck: null,
   };
 };
 
@@ -150,7 +167,7 @@ const callModel = async ({ provider, apiKey, messages, systemPrompt }) => {
   }
 };
 
-const DiceModal = ({ check, attrs, onResult }) => {
+const DiceModal = ({ check, attrs, optionText, onResult, onCancel }) => {
   const [rolling, setRolling] = useState(false);
   const [rolled, setRolled] = useState(null);
   const [display, setDisplay] = useState(null);
@@ -178,28 +195,14 @@ const DiceModal = ({ check, attrs, onResult }) => {
   const success = total !== null ? total >= check.dc : null;
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(90,62,43,0.5)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100,
-    }}>
-      <div style={{
-        background: "#fffaf4", border: "1px solid rgba(180,140,100,0.3)",
-        borderRadius: 12, padding: "32px 40px", textAlign: "center",
-        fontFamily: "'Noto Serif SC', Georgia, serif", minWidth: 300,
-      }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(90,62,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+      <div style={{ background: "#fffaf4", border: "1px solid rgba(180,140,100,0.3)", borderRadius: 12, padding: "32px 40px", textAlign: "center", fontFamily: "'Noto Serif SC', Georgia, serif", minWidth: 320 }}>
         <div style={{ fontSize: 13, color: "#b89880", marginBottom: 6, letterSpacing: "0.1em" }}>技能检定</div>
-        <div style={{ fontSize: 20, color: "#5a3e2b", marginBottom: 4, fontWeight: 500 }}>{check.skill}</div>
+        <div style={{ fontSize: 15, color: "#5a3e2b", marginBottom: 4, fontWeight: 500 }}>{optionText}</div>
         <div style={{ fontSize: 12, color: "#b89880", marginBottom: 24 }}>
-          技能值 {skillVal} · 目标 DC {check.dc}
+          {check.skill} {skillVal} · 目标 DC {check.dc}
         </div>
-        <div style={{
-          width: 80, height: 80, margin: "0 auto 24px",
-          border: "2px solid #c47c5a", borderRadius: 12,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 36, color: "#c47c5a", fontWeight: 500,
-          transition: "all 0.05s",
-          background: rolling ? "rgba(196,124,90,0.08)" : "transparent",
-        }}>
+        <div style={{ width: 80, height: 80, margin: "0 auto 24px", border: "2px solid #c47c5a", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, color: "#c47c5a", fontWeight: 500, background: rolling ? "rgba(196,124,90,0.08)" : "transparent" }}>
           {display || "?"}
         </div>
         {total !== null && (
@@ -212,24 +215,20 @@ const DiceModal = ({ check, attrs, onResult }) => {
             </div>
           </div>
         )}
-        {rolled === null ? (
-          <button onClick={roll} disabled={rolling} style={{
-            background: "#c47c5a", border: "none", borderRadius: 6,
-            color: "#fffaf4", fontFamily: "inherit", fontSize: 13,
-            padding: "10px 28px", cursor: rolling ? "not-allowed" : "pointer",
-            letterSpacing: "0.1em", opacity: rolling ? 0.7 : 1,
-          }}>
-            {rolling ? "投掷中……" : "投掷骰子"}
-          </button>
-        ) : (
-          <button onClick={() => onResult(success)} style={{
-            background: "#c47c5a", border: "none", borderRadius: 6,
-            color: "#fffaf4", fontFamily: "inherit", fontSize: 13,
-            padding: "10px 28px", cursor: "pointer", letterSpacing: "0.1em",
-          }}>
-            继续
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+          {rolled === null ? (
+            <>
+              <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(180,140,100,0.3)", borderRadius: 6, color: "#b89880", fontFamily: "inherit", fontSize: 13, padding: "10px 20px", cursor: "pointer" }}>取消</button>
+              <button onClick={roll} disabled={rolling} style={{ background: "#c47c5a", border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 13, padding: "10px 28px", cursor: rolling ? "not-allowed" : "pointer", letterSpacing: "0.1em", opacity: rolling ? 0.7 : 1 }}>
+                {rolling ? "投掷中……" : "投掷骰子"}
+              </button>
+            </>
+          ) : (
+            <button onClick={() => onResult(success)} style={{ background: "#c47c5a", border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 13, padding: "10px 28px", cursor: "pointer", letterSpacing: "0.1em" }}>
+              继续
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -245,7 +244,6 @@ export default function App() {
   const [attrsRaw, setAttrsRaw] = useState("");
   const [messages, setMessages] = useState([]);
   const [contextLog, setContextLog] = useState([]);
-  const [storyText, setStoryText] = useState("");
   const [storyHistory, setStoryHistory] = useState([]);
   const [options, setOptions] = useState([]);
   const [statusLines, setStatusLines] = useState([]);
@@ -254,16 +252,13 @@ export default function App() {
   const [started, setStarted] = useState(false);
   const [error, setError] = useState("");
   const [pendingCheck, setPendingCheck] = useState(null);
-  const [pendingSuccess, setPendingSuccess] = useState("");
-  const [pendingFail, setPendingFail] = useState("");
-  const [pendingMsgs, setPendingMsgs] = useState([]);
+  const [pendingOptionText, setPendingOptionText] = useState("");
+  const [pendingOriginalInput, setPendingOriginalInput] = useState("");
+  const [pendingMessages, setPendingMessages] = useState([]);
   const storyRef = useRef(null);
 
   const handleExport = () => {
-    const data = {
-      provider, apiKey, world, protagonist, chars, attrsRaw,
-      messages, contextLog, storyText, storyHistory, options, statusLines, started,
-    };
+    const data = { provider, apiKey, world, protagonist, chars, attrsRaw, messages, contextLog, storyHistory, options, statusLines, started };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -288,15 +283,12 @@ export default function App() {
         if (data.attrsRaw) setAttrsRaw(data.attrsRaw);
         if (data.messages) setMessages(data.messages);
         if (data.contextLog) setContextLog(data.contextLog);
-        if (data.storyText) setStoryText(data.storyText);
         if (data.storyHistory) setStoryHistory(data.storyHistory);
         if (data.options) setOptions(data.options);
         if (data.statusLines) setStatusLines(data.statusLines);
         if (data.started) setStarted(data.started);
         setTab("game");
-      } catch {
-        alert("存档文件损坏，无法读取。");
-      }
+      } catch { alert("存档文件损坏，无法读取。"); }
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -312,7 +304,6 @@ export default function App() {
 
   const call = async (userMsg, currentMessages) => {
     const newMsgs = [...currentMessages, { role: "user", content: userMsg }];
-    setMessages(newMsgs);
     setLoading(true);
     setOptions([]);
     setError("");
@@ -323,23 +314,23 @@ export default function App() {
         systemPrompt: buildSystem({ world, protagonist, chars }, attrs),
       });
       const parsed = parseReply(raw);
-      const finalMsgs = [...newMsgs, { role: "assistant", content: raw }];
 
-      if (parsed.check) {
-        setPendingCheck(parsed.check);
-        setPendingSuccess(parsed.check.successText);
-        setPendingFail(parsed.check.failText);
-        setPendingMsgs(finalMsgs);
-        setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
-        setStoryText(parsed.story);
-      } else {
-        setMessages(finalMsgs);
-        setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
-        setStoryText(parsed.story);
-        setOptions(parsed.opts);
-        setStatusLines(parsed.status);
-        setContextLog(prev => [{ turn: newMsgs.length, input: userMsg, status: parsed.status }, ...prev.slice(0, 19)]);
+      if (parsed.freeCheck) {
+        // GM要求检定，暂停等待roll点
+        setPendingCheck(parsed.freeCheck);
+        setPendingOptionText(userMsg);
+        setPendingOriginalInput(userMsg);
+        setPendingMessages(newMsgs);
+        setLoading(false);
+        return;
       }
+
+      const finalMsgs = [...newMsgs, { role: "assistant", content: raw }];
+      setMessages(finalMsgs);
+      setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
+      setOptions(parsed.opts);
+      setStatusLines(parsed.status);
+      setContextLog(prev => [{ turn: newMsgs.length, input: userMsg, status: parsed.status }, ...prev.slice(0, 19)]);
     } catch (e) {
       setError(e.message || "请求失败，请检查API key或网络。");
     } finally {
@@ -347,19 +338,21 @@ export default function App() {
     }
   };
 
+  const handleOptionClick = (opt) => {
+    if (opt.check) {
+      setPendingCheck(opt.check);
+      setPendingOptionText(opt.text);
+      setPendingOriginalInput(opt.text);
+      setPendingMessages([...messages, { role: "user", content: opt.text }]);
+    } else {
+      call(opt.text, messages);
+    }
+  };
+
   const handleCheckResult = (success) => {
-    const resultText = success ? pendingSuccess : pendingFail;
-    setMessages(pendingMsgs);
-    setStoryHistory(prev => {
-      const updated = [...prev];
-      updated[updated.length - 1] = {
-        ...updated[updated.length - 1],
-        story: updated[updated.length - 1].story + "\n\n" + resultText,
-      };
-      return updated;
-    });
-    setStoryText(prev => prev + "\n\n" + resultText);
+    const resultMsg = `${pendingOriginalInput}（检定${success ? "成功" : "失败"}）`;
     setPendingCheck(null);
+    call(resultMsg, messages);
   };
 
   const handleStart = () => {
@@ -394,7 +387,13 @@ export default function App() {
     <>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&display=swap');`}</style>
       {pendingCheck && (
-        <DiceModal check={pendingCheck} attrs={attrs} onResult={handleCheckResult} />
+        <DiceModal
+          check={pendingCheck}
+          attrs={attrs}
+          optionText={pendingOptionText}
+          onResult={handleCheckResult}
+          onCancel={() => setPendingCheck(null)}
+        />
       )}
       <div style={{ display: "flex", height: "100vh", background: c.bg, color: c.text, fontFamily: "'Noto Serif SC', 'Songti SC', STSong, Georgia, serif" }}>
         <div style={{ width: 260, background: c.side, borderRight: `1px solid ${c.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
@@ -441,9 +440,7 @@ export default function App() {
                   开始游戏
                 </button>
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button onClick={handleExport} disabled={!started} style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: started ? c.text : c.muted, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: started ? "pointer" : "not-allowed" }}>
-                    导出存档
-                  </button>
+                  <button onClick={handleExport} disabled={!started} style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: started ? c.text : c.muted, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: started ? "pointer" : "not-allowed" }}>导出存档</button>
                   <label style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", textAlign: "center" }}>
                     读取存档
                     <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
@@ -533,15 +530,25 @@ export default function App() {
                     </div>
                   </div>
                 ))}
-                {loading && (
-                  <div style={{ fontSize: 17, lineHeight: 2.3, color: c.muted }}>……</div>
-                )}
+                {loading && <div style={{ fontSize: 17, lineHeight: 2.3, color: c.muted }}>……</div>}
                 {options.length > 0 && !loading && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 8 }}>
                     <div style={{ fontSize: 10, color: c.muted, letterSpacing: "0.18em", marginBottom: 3 }}>— 选择行动 —</div>
                     {options.map((opt, i) => (
-                      <button key={i} onClick={() => handleSend(opt)} style={{ background: "rgba(196,124,90,0.06)", border: `1px solid rgba(196,124,90,0.2)`, borderRadius: 4, color: c.text, fontFamily: "inherit", fontSize: 13, padding: "9px 14px", textAlign: "left", cursor: "pointer", letterSpacing: "0.03em", lineHeight: 1.6 }}>
-                        ▶ {opt}
+                      <button key={i} onClick={() => handleOptionClick(opt)} style={{
+                        background: "rgba(196,124,90,0.06)",
+                        border: `1px solid ${opt.check ? "rgba(196,124,90,0.4)" : "rgba(196,124,90,0.2)"}`,
+                        borderRadius: 4, color: c.text, fontFamily: "inherit", fontSize: 13,
+                        padding: "9px 14px", textAlign: "left", cursor: "pointer",
+                        letterSpacing: "0.03em", lineHeight: 1.6,
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                      }}>
+                        <span>▶ {opt.text}</span>
+                        {opt.check && (
+                          <span style={{ fontSize: 11, color: c.accent, marginLeft: 10, flexShrink: 0 }}>
+                            {opt.check.skill} DC{opt.check.dc}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
