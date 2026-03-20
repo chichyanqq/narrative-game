@@ -256,7 +256,6 @@ export default function App() {
   const [pendingCheck, setPendingCheck] = useState(null);
   const [pendingOptionText, setPendingOptionText] = useState("");
   const [pendingOriginalInput, setPendingOriginalInput] = useState("");
-  const [pendingMessages, setPendingMessages] = useState([]);
   const storyRef = useRef(null);
 
   const handleExport = () => {
@@ -318,26 +317,24 @@ export default function App() {
       const parsed = parseReply(raw);
 
       if (parsed.freeCheck) {
-        // GM要求检定，暂停等待roll点
         setPendingCheck(parsed.freeCheck);
         setPendingOptionText(userMsg);
         setPendingOriginalInput(userMsg);
-        setPendingMessages(newMsgs);
         setLoading(false);
         return;
       }
 
       const finalMsgs = [...newMsgs, { role: "assistant", content: raw }];
-      ssetMessages(finalMsgs);
-setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
+      setMessages(finalMsgs);
+      setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
 
-const fallbackOpts = parsed.opts.length > 0 ? parsed.opts : [
-  { text: "继续观察，静待变化", check: null },
-  { text: "主动出击，推进局面", check: null },
-  { text: "自由输入行动……", check: null },
-];
-setOptions(fallbackOpts);
-setStatusLines(parsed.status);
+      const fallbackOpts = parsed.opts.length > 0 ? parsed.opts : [
+        { text: "继续观察，静待变化", check: null },
+        { text: "主动出击，推进局面", check: null },
+        { text: "自由输入行动……", check: null },
+      ];
+      setOptions(fallbackOpts);
+      setStatusLines(parsed.status);
       setContextLog(prev => [{ turn: newMsgs.length, input: userMsg, status: parsed.status }, ...prev.slice(0, 19)]);
     } catch (e) {
       setError(e.message || "请求失败，请检查API key或网络。");
@@ -351,7 +348,6 @@ setStatusLines(parsed.status);
       setPendingCheck(opt.check);
       setPendingOptionText(opt.text);
       setPendingOriginalInput(opt.text);
-      setPendingMessages([...messages, { role: "user", content: opt.text }]);
     } else {
       call(opt.text, messages);
     }
@@ -393,7 +389,13 @@ setStatusLines(parsed.status);
 
   return (
     <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&display=swap');`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&display=swap');
+        @keyframes bounce {
+          0%, 80%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-6px); }
+        }
+      `}</style>
       {pendingCheck && (
         <DiceModal
           check={pendingCheck}
@@ -442,21 +444,21 @@ setStatusLines(parsed.status);
                   </div>
                 ))}
                 <div style={{ fontSize: 10, letterSpacing: "0.12em", color: c.muted, marginBottom: 5, textTransform: "uppercase" }}>角色属性</div>
-              <div style={{ fontSize: 10, color: c.muted, marginBottom: 6, lineHeight: 1.7 }}>格式：技能名:数值，一行一个。NPC好感度用 好感_名字:数值</div>
-<textarea value={attrsRaw} onChange={e => setAttrsRaw(e.target.value)} placeholder={"欺骗:12\n说服:8\n心境:15\n好感_师兄:30"} rows={6} style={ta} />
-<button onClick={() => {
-  const lines = attrsRaw.split("\n").map(l => l.trim()).filter(Boolean);
-  if (lines.length === 0) return alert("请先填入属性名");
-  const rolled = lines.map(l => {
-    const name = l.split(":")[0].trim();
-    const val = Array.from({length: 3}, () => Math.floor(Math.random() * 6) + 1).reduce((a, b) => a + b, 0);
-    return `${name}:${val}`;
-  });
-  setAttrsRaw(rolled.join("\n"));
-}} style={{ width: "100%", padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 8 }}>
-  🎲 随机生成 / 重新roll
-</button>
-<button onClick={handleStart} ...>
+                <div style={{ fontSize: 10, color: c.muted, marginBottom: 6, lineHeight: 1.7 }}>格式：技能名:数值，一行一个。NPC好感度用 好感_名字:数值</div>
+                <textarea value={attrsRaw} onChange={e => setAttrsRaw(e.target.value)} placeholder={"欺骗:12\n说服:8\n心境:15\n好感_师兄:30"} rows={6} style={ta} />
+                <button onClick={() => {
+                  const lines = attrsRaw.split("\n").map(l => l.trim()).filter(Boolean);
+                  if (lines.length === 0) return alert("请先填入属性名");
+                  const rolled = lines.map(l => {
+                    const name = l.split(":")[0].trim();
+                    const val = Array.from({length: 3}, () => Math.floor(Math.random() * 6) + 1).reduce((a, b) => a + b, 0);
+                    return `${name}:${val}`;
+                  });
+                  setAttrsRaw(rolled.join("\n"));
+                }} style={{ width: "100%", padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 8 }}>
+                  🎲 随机生成 / 重新roll
+                </button>
+                <button onClick={handleStart} style={{ width: "100%", padding: 10, background: c.accent, border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 12, letterSpacing: "0.12em", cursor: "pointer" }}>
                   开始游戏
                 </button>
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -541,8 +543,19 @@ setStatusLines(parsed.status);
                 {storyHistory.map((h, i) => (
                   <div key={i} style={{ marginBottom: 36 }}>
                     {i > 0 && (
-                      <div style={{ fontSize: 11, color: c.muted, marginBottom: 14, paddingBottom: 10, borderBottom: `1px solid ${c.border}`, letterSpacing: "0.08em" }}>
-                        ▷ {h.input}
+                      <div style={{ fontSize: 11, color: c.muted, marginBottom: 14, paddingBottom: 10, borderBottom: `1px solid ${c.border}`, letterSpacing: "0.08em", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>▷ {h.input}</span>
+                        {i === storyHistory.length - 1 && !loading && (
+                          <button onClick={() => {
+                            const prevMsgs = messages.slice(0, -2);
+                            setStoryHistory(prev => prev.slice(0, -1));
+                            setMessages(prevMsgs);
+                            setOptions([]);
+                            call(h.input, prevMsgs);
+                          }} style={{ background: "transparent", border: `1px solid ${c.border}`, borderRadius: 4, color: c.muted, fontFamily: "inherit", fontSize: 10, padding: "3px 8px", cursor: "pointer", letterSpacing: "0.08em", flexShrink: 0, marginLeft: 8 }}>
+                            ↺ 重新生成
+                          </button>
+                        )}
                       </div>
                     )}
                     <div style={{ fontSize: 17, lineHeight: 2.3, color: c.story, whiteSpace: "pre-wrap", fontWeight: 300, letterSpacing: "0.04em" }}>
@@ -550,7 +563,16 @@ setStatusLines(parsed.status);
                     </div>
                   </div>
                 ))}
-                {loading && <div style={{ fontSize: 17, lineHeight: 2.3, color: c.muted }}>……</div>}
+                {loading && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: c.muted, fontSize: 13, margin: "8px 0" }}>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {[0, 1, 2].map(i => (
+                        <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: c.accent, opacity: 0.6, animation: "bounce 1.2s infinite", animationDelay: `${i * 0.2}s` }} />
+                      ))}
+                    </div>
+                    叙事者思考中……
+                  </div>
+                )}
                 {options.length > 0 && !loading && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 8 }}>
                     <div style={{ fontSize: 10, color: c.muted, letterSpacing: "0.18em", marginBottom: 3 }}>— 选择行动 —</div>
