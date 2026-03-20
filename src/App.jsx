@@ -81,6 +81,7 @@ ${attrs.length > 0 ? attrs.map(a => `${a.name}：${a.value}`).join("、") : "（
 🕐 节点：
 📌 悬念：
 ❤️ 好感：
+📊 属性变化：（本轮有变化的属性写在这里，格式"属性名 旧值→新值"，无变化则写"无"）
 `;
 
 const parseAttrs = (raw) => {
