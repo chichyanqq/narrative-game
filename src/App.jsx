@@ -340,21 +340,21 @@ export default function App() {
     width: "100%", background: "rgba(255,255,255,0.6)",
     border: `1px solid ${c.border}`, borderRadius: 6,
     color: c.text, fontFamily: "'Ma Shan Zheng', Georgia, serif",
-    fontSize: 12, lineHeight: 1.8, padding: "8px 10px",
+  fontFamily: "'Noto Serif SC', 'Songti SC', STSong, Georgia, serif",
     resize: "vertical", outline: "none", boxSizing: "border-box", marginBottom: 12,
   };
 
   return (
     <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');`}</style>
+     <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&display=swap');`}</style>
       {pendingCheck && (
         <DiceModal check={pendingCheck} attrs={attrs} onResult={handleCheckResult} />
       )}
-      <div style={{ display: "flex", height: "100vh", background: c.bg, color: c.text, fontFamily: "'Ma Shan Zheng', Georgia, serif" }}>
+      <div style={{ display: "flex", height: "100vh", background: c.bg, color: c.text, fontFamily: "'Noto Serif SC', 'Songti SC', STSong, Georgia, serif" }}>
         <div style={{ width: 260, background: c.side, borderRight: `1px solid ${c.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={{ padding: "18px 16px 0", borderBottom: `1px solid ${c.border}` }}>
-            <div style={{ fontSize: 15, color: c.accent, letterSpacing: "0.2em", marginBottom: 2 }}>叙事引擎</div>
-            <div style={{ fontSize: 10, color: c.muted, marginBottom: 12, letterSpacing: "0.15em" }}>NARRATIVE ENGINE</div>
+            <div style={{ fontSize: 17, color: c.accent, letterSpacing: "0.2em", marginBottom: 2 }}>叙事引擎</div>
+            <div style={{ fontSize: 17, color: c.muted, marginBottom: 12, letterSpacing: "0.15em" }}>NARRATIVE ENGINE</div>
             <div style={{ display: "flex" }}>
               {[["settings", "设定"], ["attrs", "属性"], ["context", "自查"]].map(([id, label]) => (
                 <button key={id} onClick={() => setTab(id)} style={{ background: "none", border: "none", borderBottom: tab === id ? `2px solid ${c.accent}` : "2px solid transparent", color: tab === id ? c.accent : c.muted, fontFamily: "inherit", fontSize: 12, padding: "8px 10px", cursor: "pointer", letterSpacing: "0.08em" }}>
