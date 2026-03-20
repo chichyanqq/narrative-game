@@ -264,6 +264,47 @@ export default function App() {
   const [pendingFail, setPendingFail] = useState("");
   const [pendingMsgs, setPendingMsgs] = useState([]);
   const storyRef = useRef(null);
+  const handleExport = () => {
+    const data = {
+      provider, apiKey, world, protagonist, chars, attrsRaw,
+      messages, contextLog, storyText, options, statusLines, started,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `存档_${new Date().toLocaleDateString("zh-CN").replace(/\//g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.provider) setProvider(data.provider);
+        if (data.apiKey) setApiKey(data.apiKey);
+        if (data.world) setWorld(data.world);
+        if (data.protagonist) setProtagonist(data.protagonist);
+        if (data.chars) setChars(data.chars);
+        if (data.attrsRaw) setAttrsRaw(data.attrsRaw);
+        if (data.messages) setMessages(data.messages);
+        if (data.contextLog) setContextLog(data.contextLog);
+        if (data.storyText) setStoryText(data.storyText);
+        if (data.options) setOptions(data.options);
+        if (data.statusLines) setStatusLines(data.statusLines);
+        if (data.started) setStarted(data.started);
+        setTab("game");
+      } catch {
+        alert("存档文件损坏，无法读取。");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   const attrs = parseAttrs(attrsRaw);
   const npcAttrs = attrs.filter(a => a.name.startsWith("好感_"));
@@ -338,10 +379,11 @@ export default function App() {
   };
 
   const ta = {
+    const ta = {
     width: "100%", background: "rgba(255,255,255,0.6)",
     border: `1px solid ${c.border}`, borderRadius: 6,
-    color: c.text, fontFamily: "'Ma Shan Zheng', Georgia, serif",
-  fontFamily: "'Noto Serif SC', 'Songti SC', STSong, Georgia, serif",
+    color: c.text, fontFamily: "'Noto Serif SC', 'Songti SC', STSong, Georgia, serif",
+    fontSize: 12, lineHeight: 1.8,
     resize: "vertical", outline: "none", boxSizing: "border-box", marginBottom: 12,
   };
 
@@ -395,6 +437,15 @@ export default function App() {
                 <button onClick={handleStart} style={{ width: "100%", padding: 10, background: c.accent, border: "none", borderRadius: 6, color: "#fffaf4", fontFamily: "inherit", fontSize: 12, letterSpacing: "0.12em", cursor: "pointer" }}>
                   开始游戏
                 </button>
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+  <button onClick={handleExport} disabled={!started} style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: started ? c.text : c.muted, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: started ? "pointer" : "not-allowed" }}>
+    导出存档
+  </button>
+  <label style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", textAlign: "center" }}>
+    读取存档
+    <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
+  </label>
+</div>
               </>
             )}
 
