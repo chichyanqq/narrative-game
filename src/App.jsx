@@ -185,14 +185,13 @@ const DiceModal = ({ check, attrs, onResult }) => {
       <div style={{
         background: "#fffaf4", border: "1px solid rgba(180,140,100,0.3)",
         borderRadius: 12, padding: "32px 40px", textAlign: "center",
-        fontFamily: "'Ma Shan Zheng', Georgia, serif", minWidth: 300,
+        fontFamily: "'Noto Serif SC', Georgia, serif", minWidth: 300,
       }}>
         <div style={{ fontSize: 13, color: "#b89880", marginBottom: 6, letterSpacing: "0.1em" }}>技能检定</div>
         <div style={{ fontSize: 20, color: "#5a3e2b", marginBottom: 4, fontWeight: 500 }}>{check.skill}</div>
         <div style={{ fontSize: 12, color: "#b89880", marginBottom: 24 }}>
           技能值 {skillVal} · 目标 DC {check.dc}
         </div>
-
         <div style={{
           width: 80, height: 80, margin: "0 auto 24px",
           border: "2px solid #c47c5a", borderRadius: 12,
@@ -203,22 +202,16 @@ const DiceModal = ({ check, attrs, onResult }) => {
         }}>
           {display || "?"}
         </div>
-
         {total !== null && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: "#b89880", marginBottom: 4 }}>
               {rolled} + {skillVal} = <span style={{ fontSize: 16, color: "#5a3e2b", fontWeight: 500 }}>{total}</span>
             </div>
-            <div style={{
-              fontSize: 15, fontWeight: 500,
-              color: success ? "#6a9e6a" : "#c47c5a",
-              marginTop: 4,
-            }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: success ? "#6a9e6a" : "#c47c5a", marginTop: 4 }}>
               {success ? "✦ 检定成功" : "✧ 检定失败"}
             </div>
           </div>
         )}
-
         {rolled === null ? (
           <button onClick={roll} disabled={rolling} style={{
             background: "#c47c5a", border: "none", borderRadius: 6,
@@ -253,6 +246,7 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [contextLog, setContextLog] = useState([]);
   const [storyText, setStoryText] = useState("");
+  const [storyHistory, setStoryHistory] = useState([]);
   const [options, setOptions] = useState([]);
   const [statusLines, setStatusLines] = useState([]);
   const [input, setInput] = useState("");
@@ -264,10 +258,11 @@ export default function App() {
   const [pendingFail, setPendingFail] = useState("");
   const [pendingMsgs, setPendingMsgs] = useState([]);
   const storyRef = useRef(null);
+
   const handleExport = () => {
     const data = {
       provider, apiKey, world, protagonist, chars, attrsRaw,
-      messages, contextLog, storyText, options, statusLines, started,
+      messages, contextLog, storyText, storyHistory, options, statusLines, started,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -294,6 +289,7 @@ export default function App() {
         if (data.messages) setMessages(data.messages);
         if (data.contextLog) setContextLog(data.contextLog);
         if (data.storyText) setStoryText(data.storyText);
+        if (data.storyHistory) setStoryHistory(data.storyHistory);
         if (data.options) setOptions(data.options);
         if (data.statusLines) setStatusLines(data.statusLines);
         if (data.started) setStarted(data.started);
@@ -312,13 +308,12 @@ export default function App() {
 
   useEffect(() => {
     if (storyRef.current) storyRef.current.scrollTop = storyRef.current.scrollHeight;
-  }, [storyText]);
+  }, [storyHistory, loading]);
 
   const call = async (userMsg, currentMessages) => {
     const newMsgs = [...currentMessages, { role: "user", content: userMsg }];
     setMessages(newMsgs);
     setLoading(true);
-    setStoryText("……");
     setOptions([]);
     setError("");
 
@@ -335,9 +330,11 @@ export default function App() {
         setPendingSuccess(parsed.check.successText);
         setPendingFail(parsed.check.failText);
         setPendingMsgs(finalMsgs);
+        setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
         setStoryText(parsed.story);
       } else {
         setMessages(finalMsgs);
+        setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
         setStoryText(parsed.story);
         setOptions(parsed.opts);
         setStatusLines(parsed.status);
@@ -345,7 +342,6 @@ export default function App() {
       }
     } catch (e) {
       setError(e.message || "请求失败，请检查API key或网络。");
-      setStoryText("");
     } finally {
       setLoading(false);
     }
@@ -354,6 +350,14 @@ export default function App() {
   const handleCheckResult = (success) => {
     const resultText = success ? pendingSuccess : pendingFail;
     setMessages(pendingMsgs);
+    setStoryHistory(prev => {
+      const updated = [...prev];
+      updated[updated.length - 1] = {
+        ...updated[updated.length - 1],
+        story: updated[updated.length - 1].story + "\n\n" + resultText,
+      };
+      return updated;
+    });
     setStoryText(prev => prev + "\n\n" + resultText);
     setPendingCheck(null);
   };
@@ -388,7 +392,7 @@ export default function App() {
 
   return (
     <>
-     <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC&display=swap');`}</style>
       {pendingCheck && (
         <DiceModal check={pendingCheck} attrs={attrs} onResult={handleCheckResult} />
       )}
@@ -396,7 +400,7 @@ export default function App() {
         <div style={{ width: 260, background: c.side, borderRight: `1px solid ${c.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={{ padding: "18px 16px 0", borderBottom: `1px solid ${c.border}` }}>
             <div style={{ fontSize: 17, color: c.accent, letterSpacing: "0.2em", marginBottom: 2 }}>叙事引擎</div>
-            <div style={{ fontSize: 17, color: c.muted, marginBottom: 12, letterSpacing: "0.15em" }}>NARRATIVE ENGINE</div>
+            <div style={{ fontSize: 12, color: c.muted, marginBottom: 12, letterSpacing: "0.15em" }}>NARRATIVE ENGINE</div>
             <div style={{ display: "flex" }}>
               {[["settings", "设定"], ["attrs", "属性"], ["context", "自查"]].map(([id, label]) => (
                 <button key={id} onClick={() => setTab(id)} style={{ background: "none", border: "none", borderBottom: tab === id ? `2px solid ${c.accent}` : "2px solid transparent", color: tab === id ? c.accent : c.muted, fontFamily: "inherit", fontSize: 12, padding: "8px 10px", cursor: "pointer", letterSpacing: "0.08em" }}>
@@ -437,14 +441,14 @@ export default function App() {
                   开始游戏
                 </button>
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-  <button onClick={handleExport} disabled={!started} style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: started ? c.text : c.muted, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: started ? "pointer" : "not-allowed" }}>
-    导出存档
-  </button>
-  <label style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", textAlign: "center" }}>
-    读取存档
-    <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
-  </label>
-</div>
+                  <button onClick={handleExport} disabled={!started} style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: started ? c.text : c.muted, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: started ? "pointer" : "not-allowed" }}>
+                    导出存档
+                  </button>
+                  <label style={{ flex: 1, padding: 9, background: "transparent", border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, fontFamily: "inherit", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer", textAlign: "center" }}>
+                    读取存档
+                    <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
+                  </label>
+                </div>
               </>
             )}
 
@@ -502,22 +506,38 @@ export default function App() {
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", background: c.panel }}>
           <div style={{ height: 2, background: `linear-gradient(90deg, transparent, ${c.accent}, transparent)`, opacity: 0.3 }} />
-          <div ref={storyRef} style={{ flex: 1, overflowY: "auto", padding: "36px 44px 20px", display: "flex", flexDirection: "column", justifyContent: started ? "flex-start" : "center", alignItems: "center" }}>
+          <div ref={storyRef} style={{ flex: 1, overflowY: "auto", padding: "36px 44px 20px" }}>
             {!started ? (
-              <div style={{ textAlign: "center", color: c.muted }}>
-                <div style={{ fontSize: 28, color: "rgba(196,124,90,0.25)", marginBottom: 12 }}>◈</div>
-                <div style={{ fontSize: 12, letterSpacing: "0.2em" }}>在左侧填写设定后开始游戏</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center", color: c.muted }}>
+                <div>
+                  <div style={{ fontSize: 28, color: "rgba(196,124,90,0.25)", marginBottom: 12 }}>◈</div>
+                  <div style={{ fontSize: 12, letterSpacing: "0.2em" }}>在左侧填写设定后开始游戏</div>
+                </div>
               </div>
             ) : (
-              <div style={{ maxWidth: 660, width: "100%" }}>
+              <div style={{ maxWidth: 660, margin: "0 auto" }}>
                 {error && (
                   <div style={{ color: "#c47c5a", fontSize: 13, marginBottom: 16, padding: "10px 14px", border: "1px solid rgba(196,124,90,0.3)", borderRadius: 6 }}>
                     {error}
                   </div>
                 )}
-                <div style={{ fontSize: 15, lineHeight: 2.2, color: c.story, whiteSpace: "pre-wrap", fontWeight: 300, letterSpacing: "0.04em", marginBottom: 24 }}>{storyText}</div>
+                {storyHistory.map((h, i) => (
+                  <div key={i} style={{ marginBottom: 36 }}>
+                    {i > 0 && (
+                      <div style={{ fontSize: 11, color: c.muted, marginBottom: 14, paddingBottom: 10, borderBottom: `1px solid ${c.border}`, letterSpacing: "0.08em" }}>
+                        ▷ {h.input}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 17, lineHeight: 2.3, color: c.story, whiteSpace: "pre-wrap", fontWeight: 300, letterSpacing: "0.04em" }}>
+                      {h.story}
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div style={{ fontSize: 17, lineHeight: 2.3, color: c.muted }}>……</div>
+                )}
                 {options.length > 0 && !loading && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 8 }}>
                     <div style={{ fontSize: 10, color: c.muted, letterSpacing: "0.18em", marginBottom: 3 }}>— 选择行动 —</div>
                     {options.map((opt, i) => (
                       <button key={i} onClick={() => handleSend(opt)} style={{ background: "rgba(196,124,90,0.06)", border: `1px solid rgba(196,124,90,0.2)`, borderRadius: 4, color: c.text, fontFamily: "inherit", fontSize: 13, padding: "9px 14px", textAlign: "left", cursor: "pointer", letterSpacing: "0.03em", lineHeight: 1.6 }}>
