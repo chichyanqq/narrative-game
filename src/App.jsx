@@ -147,7 +147,7 @@ const callModel = async ({ provider, apiKey, messages, systemPrompt }) => {
         "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true",
       },
-      body: JSON.stringify({ model: cfg.defaultModel, max_tokens: 1000, system: systemPrompt, messages }),
+      body: JSON.stringify({ model: cfg.defaultModel, max_tokens: 3000, system: systemPrompt, messages }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
@@ -158,7 +158,7 @@ const callModel = async ({ provider, apiKey, messages, systemPrompt }) => {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: cfg.defaultModel, max_tokens: 1000,
+        model: cfg.defaultModel, max_tokens: 3000,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
       }),
     });
