@@ -49,7 +49,7 @@ ${attrs.length > 0 ? attrs.map(a => `${a.name}：${a.value}`).join("、") : "（
 - 所有关系循序渐进，禁止角色对主角莫名好感
 - NPC有自己的动机，世界自己在运转
 - 每轮结尾必须已经发生了新的事件或人物动作，选项是基于新状态的选择，而不是推动剧情的唯一方式——世界不等玩家发话才运转
-- 每轮必须提供2-4个选项，无论任何情况都不能省略选项
+- 每轮必须提供2-4个选项，无论任何情况都不能省略选项，这是硬性要求，违反此规则视为输出不完整
 
 ## 选项格式规则
 选项格式：每行一个，前面加 ▶ 符号。
@@ -326,10 +326,16 @@ export default function App() {
       }
 
       const finalMsgs = [...newMsgs, { role: "assistant", content: raw }];
-      setMessages(finalMsgs);
-      setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
-      setOptions(parsed.opts);
-      setStatusLines(parsed.status);
+      ssetMessages(finalMsgs);
+setStoryHistory(prev => [...prev, { input: userMsg, story: parsed.story }]);
+
+const fallbackOpts = parsed.opts.length > 0 ? parsed.opts : [
+  { text: "继续观察，静待变化", check: null },
+  { text: "主动出击，推进局面", check: null },
+  { text: "自由输入行动……", check: null },
+];
+setOptions(fallbackOpts);
+setStatusLines(parsed.status);
       setContextLog(prev => [{ turn: newMsgs.length, input: userMsg, status: parsed.status }, ...prev.slice(0, 19)]);
     } catch (e) {
       setError(e.message || "请求失败，请检查API key或网络。");
